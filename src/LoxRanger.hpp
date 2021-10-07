@@ -28,7 +28,7 @@ private:
   int _pinGPIO;
   unsigned long _ulCycleTime;
 
-  const char *cCaption = "• Ranging Module:";
+  const char *cCaption = "• VL53L1x Ranging Module:";
   const char *cIndent = "  ◦ ";
 
   const char *cRangeID = "range";
