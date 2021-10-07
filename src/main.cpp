@@ -5,11 +5,11 @@
 #include <LoxRanger.hpp>
 
 
-#define SKN_MOD_NAME "Time of Flight Ranger"
-#define SKN_MOD_VERSION "1.0.0"
+#define SKN_MOD_NAME "VL53L1x Tof Ranger"
+#define SKN_MOD_VERSION "1.0.1"
 #define SKN_MOD_BRAND "SknSensors"
 
-#define SKN_NODE_TITLE "TOF Ranger"
+#define SKN_NODE_TITLE "VL53L1x Tof Ranger"
 #define SKN_NODE_TYPE "measurement"
 #define SKN_NODE_ID "position"
 
