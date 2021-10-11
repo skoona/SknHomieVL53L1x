@@ -134,7 +134,7 @@ unsigned int LoxRanger::handleLoxRead() {
     if (idleUpDown == 0) {
       iDirection = 3; // idle as opened or closed
 
-    } else if (idleUpDown > 1) {
+    } else if (idleUpDown >= 1) {
       iDirection = 2; // opening
 
     } else {
