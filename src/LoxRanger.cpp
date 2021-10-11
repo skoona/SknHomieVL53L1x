@@ -7,9 +7,23 @@
 LoxRanger::LoxRanger(const char *id, const char *name, const char *cType, const unsigned long durationInSeconds, const int gpioPin)
     : HomieNode(id, name, cType),
       _pinGPIO(gpioPin),
-      _ulCycleTime((durationInSeconds * 1000))
+      ulCycleDuration((durationInSeconds * 1000))
 {
   printCaption();
+  vbEnabled = false;
+}
+
+/*
+ * Utility to handle Duration Roll Overs
+*/
+unsigned long LoxRanger::setDuration(unsigned long duration)
+{
+  unsigned long value = millis() + duration;
+  if (value < duration)
+  { // rolled
+    value = duration;
+  }
+  return value;
 }
 
 /**
@@ -26,6 +40,8 @@ bool LoxRanger::isReady()
 void LoxRanger::setRunDuration(const int seconds) {
   if (seconds != 0) {
     _ulCycleTime = (unsigned long)(seconds * 1000);
+    ulCycleDuration = setDuration(_ulCycleTime);
+    vbLastRangeCycle = true;
   }
 }
 
@@ -33,17 +49,18 @@ void LoxRanger::setRunDuration(const int seconds) {
  *
  */
 void LoxRanger::startRanging() {
-  vbEnabled = true;
+  vbLastRangeCycle = true;
+  ulCycleDuration = setDuration(_ulCycleTime);
 }
 
 /**
  *
  */
 void LoxRanger::stopRanging() {
-  vbEnabled = false;
-  vTaskDelay(300);
-  lox.stopContinuous();
-  vTaskDelay(300);
+  ulCycleDuration = 0;
+  vbLastRangeCycle = true;
+  vTaskDelay(ulRangingDuration);
+  lox.stopContinuous();  
 }
 
 /**
@@ -62,34 +79,102 @@ bool LoxRanger::handleInput(const HomieRange& range, const String& property, con
   printCaption();
   Homie.getLogger() << cIndent << "〽 handleInput -> property '" << property << "' value=" << value << endl;
 
+  if (property.equalsIgnoreCase(cOperateID)) {
+    if (value.equalsIgnoreCase("on")) {
+      startRanging();      
+
+    }else if(value.equalsIgnoreCase("off")) {
+      stopRanging();
+      setProperty(cOperateID).send("OFF");
+
+    } else {
+      setProperty(cOperateID).send("ERROR");
+      
+    }
+    return true;
+  }
+
   return false;
 }
 
+/**
+ * @brief 
+ * 
+ */
+unsigned int LoxRanger::handleLoxRead() {
+  const int capacity = (MAX_SAMPLES - 1);
+  int idleUpDown = 0;
+
+  unsigned int value = (unsigned int)lox.read(false);
+  if (value == 0) {
+    return uiDistanceValue;
+  }
+
+  for (int idx = 0; idx < capacity; idx++) {
+    distances[idx] = distances[idx+1]; // move all down
+  }
+
+  distances[capacity] = lox.ranging_data.range_mm;
+
+  if (distances[0] > 0) {
+    idleUpDown = 0;
+
+    for (int idx = 0; idx < capacity; idx++)
+    {
+      if (distances[idx] > (distances[idx+1] + 10)) {
+        idleUpDown--; // Closing <-1
+      }
+      if ((distances[idx] + 10) < distances[idx+1])
+      {
+        idleUpDown++; // Opening > 1
+      }
+      // 0 = stable, open or closed
+    }
+
+    if (idleUpDown == 0) {
+      iDirection = 3; // idle as opened or closed
+
+    } else if (idleUpDown > 1) {
+      iDirection = 2; // opening
+
+    } else {
+      iDirection = 1; // closing
+
+    }
+  }
+
+  Homie.getLogger() << cIndent 
+                    << "Distances: " << iDirection 
+                    << ", value: " << value 
+                    << endl;
+
+  return uiDistanceValue;
+}
 /**
  *
  */
 void LoxRanger::loop()
 {
-  ulTimebase = millis();
-  ulElapsedTime = ulTimebase - ulCycleTimebase;
-  vbRangeDuration = ((ulTimebase - ulLastTimebase) >= ulRangingDuration);
-  vbRangeCycle = (ulElapsedTime >= _ulCycleTime);
+  if (vbEnabled) 
+  {
+    ulTimebase = millis();
+    ulElapsedTime = ulTimebase - ulLastTimebase;
+    vbRangeDuration = (ulElapsedTime >= ulRangingDuration);
+    vbRunCycle = (ulCycleDuration >= ulTimebase);
 
-  if (vbEnabled) {
-
-      if (vbLastRangeCycle && vbRangeCycle)
-      {
-        vbLastRangeCycle = !vbLastRangeCycle;
-
-        lox.startContinuous((uint32_t)ulRangingDuration);
-        Homie.getLogger() << "〽 Start continuous ranging @ " << ulRangingDuration << " ms accepted." << endl;
-      }
-
-    if (vbRangeDuration && vbRangeCycle)
+    if (vbLastRangeCycle && vbRunCycle) // ON
+    {
+      vbLastRangeCycle = false;
+      lox.startContinuous((uint32_t)ulRangingDuration);
+      setProperty(cOperateID).send("ON");
+      Homie.getLogger() << "〽 Start continuous ranging @ " << ulRangingDuration << " ms accepted." << endl;
+    }
+    
+    if (vbRangeDuration && vbRunCycle) 
     {
       if (!digitalRead(_pinGPIO))
       {
-        lox.read(false);
+        handleLoxRead();
         char buf[32];
         snprintf(buf, sizeof(buf), cRangeFormat, lox.ranging_data.range_mm);
         setProperty(cRangeID).send(buf);
@@ -103,21 +188,35 @@ void LoxRanger::loop()
         snprintf(buf, sizeof(buf), cAmbientFormat, lox.ranging_data.ambient_count_rate_MCPS);
         setProperty(cAmbientID).send(buf);
 
-        Homie.getLogger() << "〽 range: " << lox.ranging_data.range_mm 
-                          << " mm \tstatus: " << lox.rangeStatusToString(lox.ranging_data.range_status) 
-                          << "\tsignal: " << lox.ranging_data.peak_signal_count_rate_MCPS 
-                          << " MCPS\tambient: " << lox.ranging_data.ambient_count_rate_MCPS 
-                          << " MCPS" << endl;
+        switch (iDirection) {          
+          case 1:
+            strcpy(buf, "CLOSING");
+            break;
+          case 2:
+            strcpy(buf, "OPENING");
+            break;
+          default:
+            strcpy(buf, "IDLE");
+        }
+        setProperty(cDirectionID).send(buf);
+
+        Homie.getLogger() << "〽 range: " << lox.ranging_data.range_mm
+                          << " mm \tstatus: " << lox.rangeStatusToString(lox.ranging_data.range_status)
+                          << "\tsignal: " << lox.ranging_data.peak_signal_count_rate_MCPS
+                          << " MCPS\tambient: " << lox.ranging_data.ambient_count_rate_MCPS
+                          << " MCPS" 
+                          << " Direction: " << buf << endl;
 
         ulLastTimebase = ulTimebase;
       }
     }
 
-    if (ulElapsedTime >= (_ulCycleTime * 2))
+    if (!vbLastRangeCycle && !vbRunCycle)
     {
+      // OFF
       lox.stopContinuous();
-      ulCycleTimebase  = ulTimebase;
-      vbLastRangeCycle = !vbLastRangeCycle;
+      vbLastRangeCycle = true;
+      setProperty(cOperateID).send("OFF");
       Homie.getLogger() << "〽 Stopping continuous ranging accepted." << endl;
     }
   }
@@ -128,7 +227,7 @@ void LoxRanger::loop()
  */
 void LoxRanger::onReadyToOperate() {
   Homie.getLogger() << "〽 "<< "Node: " << getName() << " Ready to operate." << endl;
-
+  ulCycleDuration = setDuration(_ulCycleTime);
   vbEnabled = true;
 }
 
@@ -162,7 +261,6 @@ void LoxRanger::setup() {
   {
     Homie.getLogger() << "〽 200us timing budget accepted." << endl;
 
-    ulCycleTimebase = millis(); // - _ulCycleTime; // need a startup delay
     ulLastTimebase = millis();
   }
 
@@ -193,4 +291,17 @@ void LoxRanger::setup() {
       .setFormat(cAmbientFormat)
       .setRetained(false)
       .setUnit("mcps");
+
+  advertise(cDirectionID)
+      .setName("Direction of movement")
+      .setDatatype("enum")
+      .setFormat(cDirectionFormat)
+      .setRetained(false);
+
+  advertise(cOperateID)
+      .setName("Actively Ranging")
+      .setDatatype("enum")
+      .setFormat(cOperateFormat)
+      .setRetained(false)
+      .settable();
 }
