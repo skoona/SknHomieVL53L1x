@@ -9,8 +9,9 @@ HomieNode V3 (ESP32) featuring:
 - Assumes the distance being measured is one to eight feet.
 - Runs in continuous capture mode once triggered for the seconds indicated as  duration, set in the config.
 - Accepts an ON command via 'homie/<deviceID>/position/ranging/set -> ON | OFF', which will trigger continuous capture for duration seconds.
-- Public API:
 
+### Public API:
+* LoxRanger(const char *id, const char *name, const char *cType, const unsigned long durationInSeconds, const int gpioPin)
 * bool isReady()                            Is VL53L1x ready and communicating?
 * void setRunDuration(const int seconds)    set a new run duration in seconds
 * void startRanging()                       start continuous capture for Duration 
