@@ -10,6 +10,7 @@ HomieNode V3 (ESP32) featuring:
 - Runs in continuous capture mode once triggered for the seconds indicated as  duration, set in the config.
 - Accepts an ON command via 'homie/<deviceID>/position/ranging/set -> ON | OFF', which will trigger continuous capture for duration seconds.
 - Public API:
+
     bool isReady()                            Is VL53L1x ready and communicating?
     void setRunDuration(const int seconds)    set a new run duration in seconds
     void startRanging()                       start continuous capture for Duration 
