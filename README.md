@@ -6,6 +6,7 @@
 
 HomieNode V3 (ESP32) featuring:
 - VL53L1x Time of Flight Sensor capturing distance reading every 280 milliseconds once triggered.
+- Assumes the distance being measured is one to eight feet.
 - Runs in continuous capture mode once triggered for the seconds indicated as  duration, set in the config.
 - Accepts an ON command via 'homie/<deviceID>/position/ranging/set -> ON | OFF', which will trigger continuous capture for duration seconds.
 - Public API:
