@@ -31,7 +31,7 @@ private :
   unsigned int uiDistanceValue = 0;
   #define MAX_SAMPLES 5
   unsigned int distances[MAX_SAMPLES + 2];
-  int iDirection = 0; // 1=closing, 2=opening, 3=idle(open/closed)
+  char cDirection[32]; // CLOSED, OPEN, ClOSING, OPENING
 
   const char *cCaption = "• VL53L1x Ranging Module:";
   const char *cIndent = "  ◦ ";
@@ -48,6 +48,7 @@ private :
   const char *cOperateFormat = "ON,OFF,ERROR";
   const char *cDirectionID = "direction";
   const char *cDirectionFormat = "CLOSING,OPENING,IDLE";
+
 
   unsigned long ulTimebase = 0,             // current ms count
                 ulLastTimebase = 0,         // ms from last operation

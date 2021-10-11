@@ -6,7 +6,7 @@
 
 
 #define SKN_MOD_NAME "VL53L1x Tof Ranger"
-#define SKN_MOD_VERSION "1.0.3"
+#define SKN_MOD_VERSION "1.0.4"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_NODE_TITLE "VL53L1x Tof Ranger"

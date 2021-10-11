@@ -4,16 +4,24 @@
   <img src="https://homieiot.github.io/img/works-with-homie.png" alt="works with MQTT Homie">
 </a>
 
-HomieNode V3 featuring:
+HomieNode V3 (ESP32) featuring:
 - VL53L1x Time of Flight Sensor capturing distance reading every 280 milliseconds once triggered.
 - Runs in continuous capture mode once triggered for the seconds indicated as  duration, set in the config.
+- Accepts an ON command via 'homie/<deviceID>/position/ranging/set -> ON | OFF', which will trigger continuous capture for duration seconds.
+- Public API:
+    bool isReady()                            Is VL53L1x ready and communicating?
+    void setRunDuration(const int seconds)    set a new run duration in seconds
+    void startRanging()                       start continuous capture for Duration 
+    void stopRanging()                        stop capture
+
+
 
 ### Homie Config: data/homie/config.json
 
 ```
 {
   "name": "Time of Flight Ranger",
-  "device_id": "TOFRanger",
+  "device_id": "L1XRanger",
   "device_stats_interval": 900,  
   "wifi": {
     "ssid": "<wifi-host>",
@@ -31,7 +39,7 @@ HomieNode V3 featuring:
     "enabled": true
   },
   "settings": {
-      "duration": 20
+      "duration": 40
     }
 }
 ```

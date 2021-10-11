@@ -98,7 +98,7 @@ bool LoxRanger::handleInput(const HomieRange& range, const String& property, con
 }
 
 /**
- * @brief 
+ * @brief Collect distance and determine direction of travel
  * 
  */
 unsigned int LoxRanger::handleLoxRead() {
@@ -132,20 +132,26 @@ unsigned int LoxRanger::handleLoxRead() {
     }
 
     if (idleUpDown == 0) {
-      iDirection = 3; // idle as opened or closed
-
+      if (value > 2000)
+      {
+        strcpy(cDirection, "CLOSED");
+      }
+      else
+      {
+        strcpy(cDirection, "OPEN");
+      }
     } else if (idleUpDown >= 1) {
-      iDirection = 2; // opening
+      strcpy(cDirection, "OPENING");
 
     } else {
-      iDirection = 1; // closing
+      strcpy(cDirection, "CLOSING");
 
     }
   }
 
-  Homie.getLogger() << cIndent 
-                    << "Distances: " << iDirection 
-                    << ", value: " << value 
+  Homie.getLogger() << cIndent
+                    << "Distances: " << cDirection
+                    << ", value: " << value
                     << endl;
 
   return uiDistanceValue;
@@ -188,24 +194,14 @@ void LoxRanger::loop()
         snprintf(buf, sizeof(buf), cAmbientFormat, lox.ranging_data.ambient_count_rate_MCPS);
         setProperty(cAmbientID).send(buf);
 
-        switch (iDirection) {          
-          case 1:
-            strcpy(buf, "CLOSING");
-            break;
-          case 2:
-            strcpy(buf, "OPENING");
-            break;
-          default:
-            strcpy(buf, "IDLE");
-        }
-        setProperty(cDirectionID).send(buf);
+        setProperty(cDirectionID).send(cDirection);
 
         Homie.getLogger() << "〽 range: " << lox.ranging_data.range_mm
                           << " mm \tstatus: " << lox.rangeStatusToString(lox.ranging_data.range_status)
                           << "\tsignal: " << lox.ranging_data.peak_signal_count_rate_MCPS
                           << " MCPS\tambient: " << lox.ranging_data.ambient_count_rate_MCPS
                           << " MCPS" 
-                          << " Direction: " << buf << endl;
+                          << " Direction: " << cDirection << endl;
 
         ulLastTimebase = ulTimebase;
       }
