@@ -149,11 +149,6 @@ unsigned int LoxRanger::handleLoxRead() {
     }
   }
 
-  Homie.getLogger() << cIndent
-                    << "Distances: " << cDirection
-                    << ", value: " << value
-                    << endl;
-
   return uiDistanceValue;
 }
 /**

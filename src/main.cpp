@@ -36,6 +36,10 @@ bool broadcastHandler(const String &level, const String &value)
 void setup()
 {
     Serial.begin(115200);
+    vTaskDelay(200);
+    if (!Serial) {
+        Homie.disableLogging();
+    }
 
     Wire.begin(LOX_PIN_SDA, LOX_PIN_SCL, 400000U);
 
@@ -50,7 +54,7 @@ void setup()
     ranger.setRunDuration(cfgDuration.get());
 
     Homie.setBroadcastHandler(broadcastHandler)
-        .setLedPin(LED_BUILTIN, LOW)
+        .setLedPin(LED_BUILTIN, HIGH)
         .disableResetTrigger();
 
     Homie.setup();
